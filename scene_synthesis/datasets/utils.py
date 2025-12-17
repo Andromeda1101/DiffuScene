@@ -123,7 +123,7 @@ def parse_threed_front_scenes(
 
         scenes = sum(scenes, [])
         if(output_directory):
-            output_path = "{}/threed_front.pkl".format(output_directory) # "/cluster/balrog/jtang/3d_front_processed/threed_front.pkl"
+            output_path = "{}/threed_front.pkl".format(output_directory) # "../3d_front_processed/threed_front.pkl"
         else:
             output_path =  "/tmp/threed_front.pkl"
         pickle.dump(scenes, open(output_path, "wb")) 
@@ -199,7 +199,7 @@ def parse_threed_future_models(
         print()
         
         if(output_directory):
-            output_path = "{}/threed_future_model.pkl".format(output_directory) # "/cluster/balrog/jtang/3d_front_processed/threed_future_model.pkl"
+            output_path = "{}/threed_future_model.pkl".format(output_directory) # "../3d_front_processed/threed_future_model.pkl"
         else:
             output_path =  "/tmp/threed_future_model.pkl"
         pickle.dump(furnitures, open(output_path, "wb")) 

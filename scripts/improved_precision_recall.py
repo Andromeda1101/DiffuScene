@@ -405,7 +405,7 @@ if __name__ == '__main__':
         ))
 
     print("Generating temporary a folder with test_real images...")
-    path_to_test_real = "/cluster/balrog/jtang/ATISS_exps/test_real/" # /tmp/test_real
+    path_to_test_real = "/home/ubuntu/myvdb/DiffuScene/ATISS_exps/test_real/" # /tmp/test_real
     if not os.path.exists(path_to_test_real):
         os.makedirs(path_to_test_real)
         
@@ -416,7 +416,7 @@ if __name__ == '__main__':
     print('number of synthesized images :', len(test_real))
 
     print("Generating temporary a folder with test_fake images...")
-    path_to_test_fake = "/cluster/balrog/jtang/ATISS_exps/test_fake/" #/tmp/test_fake/
+    path_to_test_fake = "/home/ubuntu/myvdb/DiffuScene/ATISS_exps/test_fake/" #/tmp/test_fake/
     if not os.path.exists(path_to_test_fake):
         os.makedirs(path_to_test_fake)
 
@@ -431,11 +431,11 @@ if __name__ == '__main__':
         shutil.copyfile(fi, "{}/{:05d}.png".format(path_to_test_fake, i))
 
     # Downsample points
-    path_to_test_real_sample = "/cluster/balrog/jtang/ATISS_exps/test_real_sample/" # /tmp/test_real
+    path_to_test_real_sample = "/home/ubuntu/myvdb/DiffuScene/ATISS_exps/test_real_sample/" # /tmp/test_real
     if not os.path.exists(path_to_test_real_sample):
         os.makedirs(path_to_test_real_sample)
     
-    path_to_test_fake_sample = "/cluster/balrog/jtang/ATISS_exps/test_fake_sample/" #/tmp/test_fake/
+    path_to_test_fake_sample = "/home/ubuntu/myvdb/DiffuScene/ATISS_exps/test_fake_sample/" #/tmp/test_fake/
     if not os.path.exists(path_to_test_fake_sample):
         os.makedirs(path_to_test_fake_sample)
     
@@ -480,6 +480,6 @@ if __name__ == '__main__':
     os.system('rm -r %s'%path_to_test_real_sample)
     os.system('rm -r %s'%path_to_test_fake_sample)
     
-# python improved_precision_recall.py /cluster/balrog/jtang/3d_front_processed/bedrooms_notexture_nofloor_whiteground/ /cluster/balrog/jtang/ATISS_exps/diffusion_bedrooms_objfeats_lat32_v_iou.1_alphaprod/gen_clip_30000/ ../config/bedroom_threed_front_splits.csv 
-# python improved_precision_recall.py /cluster/balrog/jtang/3d_front_processed/diningrooms_notexture_nofloor_whiteground/  /cluster/balrog/jtang/ATISS_exps/diffusion_diningrooms_permaug_fixedrotaug_unet1d_dim512_nomask_instancond_cosinangle_ddpm_separateclsbbox_modinstan_objfeats_lat32_fixperm/gen_retrifeats_notsize-96000-iousym-jid ../config/diningroom_threed_front_splits.csv 
-# python improved_precision_recall.py /cluster/balrog/jtang/3d_front_processed/livingrooms_notexture_nofloor_whiteground/ /cluster/balrog/jtang/ATISS_exps/diffusion_livingrooms_permaug_fixedrotaug_unet1d_dim512_nomask_instancond_cosinangle_ddpm_separateclsbbox/gen_top2down_notexture_nofloor-58000/ ../config/livingroom_threed_front_splits.csv 
+# python improved_precision_recall.py ../3d_front_processed/bedrooms_notexture_nofloor_whiteground/ /cluster/balrog/jtang/ATISS_exps/diffusion_bedrooms_objfeats_lat32_v_iou.1_alphaprod/gen_clip_30000/ ../config/bedroom_threed_front_splits.csv 
+# python improved_precision_recall.py ../3d_front_processed/diningrooms_notexture_nofloor_whiteground/  /cluster/balrog/jtang/ATISS_exps/diffusion_diningrooms_permaug_fixedrotaug_unet1d_dim512_nomask_instancond_cosinangle_ddpm_separateclsbbox_modinstan_objfeats_lat32_fixperm/gen_retrifeats_notsize-96000-iousym-jid ../config/diningroom_threed_front_splits.csv 
+# python improved_precision_recall.py ../3d_front_processed/livingrooms_notexture_nofloor_whiteground/ /cluster/balrog/jtang/ATISS_exps/diffusion_livingrooms_permaug_fixedrotaug_unet1d_dim512_nomask_instancond_cosinangle_ddpm_separateclsbbox/gen_top2down_notexture_nofloor-58000/ ../config/livingroom_threed_front_splits.csv 

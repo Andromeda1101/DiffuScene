@@ -177,7 +177,11 @@ def main(argv):
         action="store_true",
         help="if remove the texture"
     )
-
+    parser.add_argument(
+        "--path_to_3d_future_models_dir",
+        default="../dataset/3D-FUTURE-model",
+        help="Directory containing 3D-FUTURE models (overrides paths stored in pickled dataset)"
+    )
 
     args = parser.parse_args(argv)
 
@@ -219,6 +223,13 @@ def main(argv):
     objects_dataset = ThreedFutureDataset.from_pickled_dataset(
         args.path_to_pickled_3d_futute_models
     )
+    # Override any hardcoded model base paths from pickled data
+    if hasattr(objects_dataset, "objects"):
+        # Resolve to absolute path for robustness
+        base_dir = args.path_to_3d_future_models_dir
+        base_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), base_dir)) if not os.path.isabs(base_dir) else base_dir
+        for oi in objects_dataset.objects:
+            setattr(oi, "path_to_models", base_dir)
     print("Loaded {} 3D-FUTURE models".format(len(objects_dataset)))
 
 

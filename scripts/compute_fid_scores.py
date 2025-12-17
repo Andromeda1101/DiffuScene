@@ -83,7 +83,7 @@ def main(argv):
         ))
 
     print("Generating temporary a folder with test_real images...")
-    path_to_test_real = "/cluster/balrog/jtang/ATISS_exps/test_real/" # /tmp/test_real
+    path_to_test_real = "/home/ubuntu/myvdb/DiffuScene/ATISS_exps/test_real/" # /tmp/test_real
     if not os.path.exists(path_to_test_real):
         os.makedirs(path_to_test_real)
     for i, di in enumerate(test_real):
@@ -93,7 +93,7 @@ def main(argv):
     print('number of synthesized images :', len(test_real))
 
     print("Generating temporary a folder with test_fake images...")
-    path_to_test_fake = "/cluster/balrog/jtang/ATISS_exps/test_fake/" #/tmp/test_fake/
+    path_to_test_fake = "/home/ubuntu/myvdb/DiffuScene/ATISS_exps/test_fake/" #/tmp/test_fake/
     if not os.path.exists(path_to_test_fake):
         os.makedirs(path_to_test_fake)
 
@@ -121,6 +121,6 @@ def main(argv):
 if __name__ == "__main__":
     main(None)
 
-# python compute_fid_scores.py /cluster/balrog/jtang/3d_front_processed/bedrooms_notexture_nofloor_whiteground/ /cluster/balrog/jtang/ATISS_exps/diffusion_bedrooms_objfeats_lat32_v/gen_clip_24000/ ../config/bedroom_threed_front_splits.csv
-# python compute_fid_scores.py /cluster/balrog/jtang/3d_front_processed/livingrooms_notexture_nofloor_whiteground/ /cluster/balrog/jtang/ATISS_exps/diffusion_livingrooms_permaug_fixedrotaug_unet1d_dim512_nomask_instancond_cosinangle_ddpm_separateclsbbox/gen_top2down_notexture_nofloor-58000/ ../config/livingroom_threed_front_splits.csv 
-# python compute_fid_scores.py /cluster/balrog/jtang/3d_front_processed/diningrooms_notexture_nofloor_whiteground/ /cluster/balrog/jtang/ATISS_exps/diffusion_diningrooms_permaug_fixedrotaug_unet1d_dim512_nomask_instancond_cosinangle_ddpm_separateclsbbox_modinstan_objfeats_biou/gen_top2down_notexture_nofloor_retrifeats_combsize-59800/ ../config/diningroom_threed_front_splits.csv 
+# python compute_fid_scores.py ../3d_front_processed/bedrooms_notexture_nofloor_whiteground/ /cluster/balrog/jtang/ATISS_exps/diffusion_bedrooms_objfeats_lat32_v/gen_clip_24000/ ../config/bedroom_threed_front_splits.csv
+# python compute_fid_scores.py ../3d_front_processed/livingrooms_notexture_nofloor_whiteground/ /cluster/balrog/jtang/ATISS_exps/diffusion_livingrooms_permaug_fixedrotaug_unet1d_dim512_nomask_instancond_cosinangle_ddpm_separateclsbbox/gen_top2down_notexture_nofloor-58000/ ../config/livingroom_threed_front_splits.csv 
+# python compute_fid_scores.py ../3d_front_processed/diningrooms_notexture_nofloor_whiteground/ /cluster/balrog/jtang/ATISS_exps/diffusion_diningrooms_permaug_fixedrotaug_unet1d_dim512_nomask_instancond_cosinangle_ddpm_separateclsbbox_modinstan_objfeats_biou/gen_top2down_notexture_nofloor_retrifeats_combsize-59800/ ../config/diningroom_threed_front_splits.csv 

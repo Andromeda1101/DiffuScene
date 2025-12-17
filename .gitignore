@@ -4,3 +4,17 @@ __pycache__
 *.egg-info
 ./output/
 pretrained
+
+*.zip
+pretrained_diffusion/
+
+*.o
+*.log
+*.so
+.ninja*
+*.ninja
+*.egg
+
+3d_front_processed/
+
+dataset/

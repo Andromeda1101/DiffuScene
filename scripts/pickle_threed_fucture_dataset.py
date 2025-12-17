@@ -21,14 +21,17 @@ def main(argv):
     )
     parser.add_argument(
         "path_to_3d_front_dataset_directory",
+        default="../3d_front_processed/",
         help="Path to the 3D-FRONT dataset"
     )
     parser.add_argument(
         "path_to_3d_future_dataset_directory",
+        default="../dataset/3D-FUTURE-model",
         help="Path to the 3D-FUTURE dataset"
     )
     parser.add_argument(
         "path_to_model_info",
+        default="../dataset/3D-FUTURE-model/model_info.json",
         help="Path to the 3D-FUTURE model_info.json file"
     )
     parser.add_argument(
