@@ -40,7 +40,10 @@ from utils import render as render_top2down
 from utils import merge_meshes
 import trimesh
 import open3d as o3d
-from utils import merge_meshes,  computer_intersection, computer_symmetry
+from utils import merge_meshes, computer_intersection, computer_symmetry
+from utils import save_object_info_json, create_video_from_frames
+from utils import save_progressive_data_json
+import json
 
 def categorical_kl(p, q):
     return (p * (np.log(p + 1e-6) - np.log(q + 1e-6))).sum()
@@ -186,6 +189,24 @@ def main(argv):
         action="store_true",
         help="if remove the texture"
     )
+    parser.add_argument(
+        "--save_progressive_video",
+        action="store_true",
+        help="Save progressive video showing object layout changes during optimization"
+    )
+    parser.add_argument(
+        "--video_num_steps",
+        type=int,
+        default=10,
+        help="Number of intermediate steps to sample for progressive video"
+    )
+    parser.add_argument(
+        "--video_fps",
+        type=int,
+        default=5,
+        help="Frames per second for the output video"
+    )
+    
     args = parser.parse_args(argv)
 
     # Disable trimesh's logger
@@ -304,6 +325,18 @@ def main(argv):
 
     classes = np.array(dataset.class_labels)
     print('class labels:', classes, len(classes))
+    
+    # Create directories for progressive video if needed
+    if args.save_progressive_video:
+        progressive_dir = os.path.join(args.output_directory, "progressive_video")
+        frames_dir = os.path.join(progressive_dir, "frames")
+        data_dir = os.path.join(progressive_dir, "data")
+        videos_dir = os.path.join(progressive_dir, "videos")
+        os.makedirs(frames_dir, exist_ok=True)
+        os.makedirs(data_dir, exist_ok=True)
+        os.makedirs(videos_dir, exist_ok=True)
+        print(f"Progressive video mode enabled. Saving to: {progressive_dir}")
+    
     for i in range(args.n_sequences):
         if args.fix_order:
             if i < len(dataset):
@@ -322,18 +355,110 @@ def main(argv):
         floor_plan, tr_floor, room_mask = floor_plan_from_scene(
             current_scene, args.path_to_floor_plan_textures, no_texture=args.no_texture
         )
-
-
-        bbox_params = network.generate_layout(
+        
+        # Choose between progressive generation (for video) or single generation
+        if args.save_progressive_video:
+            # Use progressive generation to get intermediate steps
+            boxes_traj = network.generate_layout_progressive(
                 room_mask=room_mask.to(device),
                 num_points=config["network"]["sample_num_points"],
                 point_dim=config["network"]["point_dim"],
-                #text=torch.from_numpy(samples['desc_emb'])[None, :].to(device) if 'desc_emb' in samples.keys() else None, # glove embedding
-                text=samples['description'] if 'description' in samples.keys() else None,  # bert 
+                text=samples['description'] if 'description' in samples.keys() else None,
                 device=device,
                 clip_denoised=args.clip_denoised,
                 batch_seeds=torch.arange(i, i+1),
-        )
+                num_step=args.video_num_steps,
+                ret_traj=True
+            )
+            print(f"Generated {len(boxes_traj)} intermediate steps for progressive video")
+            
+            # Store frame paths and data for this sequence
+            frame_paths = []
+            bbox_params_list = []
+            model_jids_list = []
+            timesteps_list = []
+            
+            # Process each timestep in the trajectory
+            for step_idx, (timestep, bbox_params) in enumerate(sorted(boxes_traj.items())):
+                boxes = dataset.post_process(bbox_params)
+                bbox_params_t = torch.cat([
+                    boxes["class_labels"],
+                    boxes["translations"],
+                    boxes["sizes"],
+                    boxes["angles"]
+                ], dim=-1).cpu().numpy()
+                
+                # Get textured objects for this timestep
+                if args.retrive_objfeats:
+                    objfeats = boxes["objfeats"].cpu().numpy()
+                    renderables_step, trimesh_meshes_step, model_jids_step = get_textured_objects_based_on_objfeats(
+                        bbox_params_t, objects_dataset, classes, diffusion=True, 
+                        no_texture=args.no_texture, query_objfeats=objfeats
+                    )
+                else:
+                    renderables_step, trimesh_meshes_step, model_jids_step = get_textured_objects(
+                        bbox_params_t, objects_dataset, classes, diffusion=True, no_texture=args.no_texture
+                    )
+                
+                # Store data for batch saving
+                bbox_params_list.append(bbox_params_t)
+                model_jids_list.append(model_jids_step)
+                timesteps_list.append(timestep)
+                
+                if not args.without_floor:
+                    renderables_step += floor_plan
+                
+                # Render and save frame
+                if args.render_top2down:
+                    frame_filename = "{}_scene{:03d}_step{:04d}.png".format(
+                        current_scene.scene_id, i, step_idx
+                    )
+                    frame_path = os.path.join(frames_dir, frame_filename)
+                    render_top2down(
+                        scene_top2down,
+                        renderables_step,
+                        color=None,
+                        mode="shading",
+                        frame_path=frame_path,
+                    )
+                    frame_paths.append(frame_path)
+                    
+                    print(f"  Step {step_idx}/{len(boxes_traj)-1} (t={timestep}): "
+                          f"{bbox_params_t.shape[0] if len(bbox_params_t.shape) == 2 else bbox_params_t.shape[1]} objects")
+            
+            # Save all timesteps data in a single JSON file
+            data_filename = "{}_scene{:03d}_progressive_data.json".format(current_scene.scene_id, i)
+            data_path = os.path.join(data_dir, data_filename)
+            additional_config = {
+                "video_num_steps": args.video_num_steps,
+                "retrive_objfeats": args.retrive_objfeats,
+                "no_texture": args.no_texture,
+                "clip_denoised": args.clip_denoised
+            }
+            save_progressive_data_json(
+                bbox_params_list, model_jids_list, timesteps_list,
+                current_scene.scene_id, i, data_path, additional_config
+            )
+            
+            # Create video from frames
+            video_filename = "{}_scene{:03d}_progressive.mp4".format(current_scene.scene_id, i)
+            video_path = os.path.join(videos_dir, video_filename)
+            create_video_from_frames(frame_paths, video_path, fps=args.video_fps)
+            
+            # Use the final timestep for further processing
+            bbox_params = boxes_traj[max(boxes_traj.keys())]
+        else:
+            # Normal single generation
+            bbox_params = network.generate_layout(
+                    room_mask=room_mask.to(device),
+                    num_points=config["network"]["sample_num_points"],
+                    point_dim=config["network"]["point_dim"],
+                    #text=torch.from_numpy(samples['desc_emb'])[None, :].to(device) if 'desc_emb' in samples.keys() else None, # glove embedding
+                    text=samples['description'] if 'description' in samples.keys() else None,  # bert 
+                    device=device,
+                    clip_denoised=args.clip_denoised,
+                    batch_seeds=torch.arange(i, i+1),
+            )
 
         boxes = dataset.post_process(bbox_params)
         bbox_params_t = torch.cat([

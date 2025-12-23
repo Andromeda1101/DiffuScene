@@ -229,16 +229,19 @@ def main(argv):
     lr_scheduler = schedule_factory(config["training"])
 
     # Initialize the logger
+    logger_instance = WandB.instance() if args.with_wandb_logger else StatsLogger.instance()
     if args.with_wandb_logger:
-        WandB.instance().init(
+        logger_instance.init(
             config,
             model=network,
             project=config["logger"].get(
-                "project", "autoregressive_transformer"
+                "project", "DiffuScene-ObjectAutoencoder"
             ),
             name=experiment_tag,
-            watch=False,
-            log_frequency=10
+            watch=True,
+            log_frequency=10,
+            log_gradients=config["logger"].get("log_gradients", False),
+            tags=config["logger"].get("tags", ["autoencoder"])
         )
 
     # Log the stats to a file
@@ -256,6 +259,14 @@ def main(argv):
     for i in range(args.continue_from_epoch, epochs):
         # adjust learning rate
         adjust_learning_rate(lr_scheduler, optimizer, i)
+        
+        # Log learning rate
+        current_lr = optimizer.param_groups[0]['lr']
+        if args.with_wandb_logger:
+            WandB.instance().log_custom_metrics({
+                "learning_rate": current_lr,
+                "epoch": i + 1
+            })
 
         network.train()
         #for b, sample in zip(range(steps_per_epoch), yield_forever(train_loader)):
@@ -288,6 +299,10 @@ def main(argv):
                 StatsLogger.instance().print_progress(-1, b+1, batch_loss)
             StatsLogger.instance().clear()
             print("====> Validation Epoch ====>")
+    
+    # Finish wandb run
+    if args.with_wandb_logger:
+        WandB.instance().finish()
 
 
 if __name__ == "__main__":

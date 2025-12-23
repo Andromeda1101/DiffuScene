@@ -114,6 +114,39 @@ If you want to calculate evaluation metrics of bbox IoU and average number of sy
 Please note that our current text-conditioned model is used to generate a full scene configuration from a text prompt of partial scene (2-3 sentences).
 If you want to evaluate our method with text prompts of more sentences, you might need to re-train our method.
 
+## 🆕 Custom Text Input Feature
+We now support **flexible text input** for scene generation! You can provide custom text descriptions via:
+- **Command-line input**: Direct text in command arguments
+- **Single file input**: Read from a `.txt` file
+- **Batch directory input**: Process all `.txt` files in a directory
+
+### Quick Start
+```bash
+cd run
+bash generate_text_input.sh
+```
+
+For detailed instructions, see:
+- [文本输入快速上手.md](文本输入快速上手.md) - 中文快速指南
+- [TEXT_INPUT_GUIDE.md](TEXT_INPUT_GUIDE.md) - Complete English guide
+
+### Example Usage
+```bash
+# Command-line input
+python generate_from_text_input.py config.yaml output_dir model.pkl \
+    --enable_text_input \
+    --text "a bedroom with a large bed and two nightstands" \
+    --n_sequences 5
+
+# Batch directory input (recommended)
+python generate_from_text_input.py config.yaml output_dir model.pkl \
+    --enable_text_input \
+    --text_dir demo/text_inputs \
+    --n_sequences 5
+```
+
+All inputs and outputs are automatically saved for further analysis!
+
 ## Evaluation Metrics
 To evaluate FID and KID from rendered 2D images of generated and reference scenes, you can run:
 ```

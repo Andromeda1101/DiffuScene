@@ -1,5 +1,3 @@
-
-
 import os
 from turtle import color
 
@@ -746,3 +744,228 @@ def computer_symmetry(trimeshes, class_labels, model_jids=None):
                             num_symmetry += 1
                 
     return num_symmetry
+
+
+def save_object_info_json(bbox_params_t, classes, model_jids, output_path):
+    """
+    保存物体信息到JSON文件
+    
+    Args:
+        bbox_params_t: numpy array, shape (N, feature_dim) or (B, N, feature_dim) 包含物体的参数
+            格式: [class_labels(probability), translations(3), sizes(3), angles(1)]
+        classes: numpy array, 类别标签列表（可能包含start和end）
+        model_jids: list, 检索到的模型ID列表
+        output_path: str, JSON文件保存路径
+    """
+    import json
+    
+    # Handle batch dimension if present
+    if len(bbox_params_t.shape) == 3:
+        # Shape is (B, N, feature_dim), take first batch
+        bbox_params_t = bbox_params_t[0]
+    
+    objects_info = []
+    
+    # bbox_params_t shape: (N, feature_dim)
+    # 需要确定class_labels的实际维度
+    # 先尝试从bbox_params_t的形状推断
+    
+    # 固定维度：translation(3) + size(3) + angle(1) = 7
+    fixed_dims = 7
+    
+    # 推断class_labels的维度
+    if bbox_params_t.shape[1] > fixed_dims:
+        n_class_labels = bbox_params_t.shape[1] - fixed_dims
+    else:
+        # 如果维度不够，说明数据有问题
+        print(f"Warning: bbox_params_t shape {bbox_params_t.shape} is too small, skipping")
+        return []
+    
+    # 过滤掉 start 和 end，获取实际类别
+    actual_classes = [c for c in classes if c not in ['start', 'end']]
+    
+    # 确保类别数量匹配
+    if len(actual_classes) != n_class_labels:
+        # 如果不匹配，使用推断出的维度创建类别列表
+        print(f"Warning: actual_classes length ({len(actual_classes)}) != n_class_labels ({n_class_labels})")
+        print(f"Using first {min(n_class_labels, len(actual_classes))} classes from actual_classes")
+        # 如果actual_classes不够，用索引填充
+        if len(actual_classes) < n_class_labels:
+            actual_classes = actual_classes + [f"class_{i}" for i in range(len(actual_classes), n_class_labels)]
+        else:
+            actual_classes = actual_classes[:n_class_labels]
+    
+    for i in range(bbox_params_t.shape[0]):
+        # 提取物体参数
+        obj_params = bbox_params_t[i]
+        
+        # 解析参数 (class_label, translation_x, translation_y, translation_z, size_x, size_y, size_z, angle)
+        class_probs = obj_params[:n_class_labels]
+        class_idx = int(np.argmax(class_probs))
+        
+        # 边界检查
+        if class_idx >= len(actual_classes):
+            print(f"Warning: class_idx {class_idx} >= len(actual_classes) {len(actual_classes)}, using last class")
+            class_idx = len(actual_classes) - 1
+        
+        translation = obj_params[n_class_labels:n_class_labels+3].tolist()
+        size = obj_params[n_class_labels+3:n_class_labels+6].tolist()
+        angle = obj_params[n_class_labels+6:n_class_labels+7].tolist() if n_class_labels+6 < len(obj_params) else [0.0]
+        
+        # 安全地提取类别概率值
+        try:
+            class_prob_value = float(class_probs[class_idx])
+        except (TypeError, ValueError):
+            # 如果是数组，取第一个元素
+            class_prob_value = float(np.array(class_probs[class_idx]).flat[0])
+        
+        obj_info = {
+            "object_id": i,
+            "class_label": actual_classes[class_idx] if class_idx < len(actual_classes) else "unknown",
+            "class_index": int(class_idx),
+            "class_probability": class_prob_value,
+            "translation": {
+                "x": float(translation[0]),
+                "y": float(translation[1]),
+                "z": float(translation[2])
+            },
+            "size": {
+                "x": float(size[0]),
+                "y": float(size[1]),
+                "z": float(size[2])
+            },
+            "rotation_angle": float(angle[0]) if angle else 0.0,
+            "model_jid": model_jids[i] if i < len(model_jids) else "unknown"
+        }
+        objects_info.append(obj_info)
+    
+    # 保存到JSON文件
+    with open(output_path, 'w') as f:
+        json.dump({
+            "num_objects": len(objects_info),
+            "objects": objects_info
+        }, f, indent=2)
+    
+    return objects_info
+
+
+def save_progressive_data_json(bbox_params_list, model_jids_list, timesteps_list, scene_id, scene_idx, output_path, additional_config=None):
+    """
+    Save progressive generation data with all timesteps in a single JSON file
+    
+    Args:
+        bbox_params_list: list of numpy arrays, bbox parameters for each timestep
+        model_jids_list: list of lists, model IDs for each timestep
+        timesteps_list: list of timesteps
+        scene_id: scene identifier
+        scene_idx: scene index
+        output_path: str, JSON file save path
+        additional_config: dict, optional additional configuration to save
+    """
+    import json
+    
+    # Prepare config section
+    config = {
+        "scene_id": str(scene_id),
+        "scene_idx": int(scene_idx),
+        "num_timesteps": len(timesteps_list),
+        "total_timesteps": int(max(timesteps_list)) if timesteps_list else 0
+    }
+    
+    # Add any additional config
+    if additional_config:
+        config.update(additional_config)
+    
+    # Prepare data section
+    data = []
+    for timestep, bbox_params, model_jids in zip(timesteps_list, bbox_params_list, model_jids_list):
+        # Handle batch dimension if present
+        if len(bbox_params.shape) == 3:
+            bbox_params = bbox_params[0]
+        
+        timestep_data = {
+            "timestep": int(timestep),
+            "num_objects": int(bbox_params.shape[0]),
+            "bbox_params_t": bbox_params.tolist(),  # Convert numpy array to list
+            "model_jids": model_jids
+        }
+        data.append(timestep_data)
+    
+    # Combine config and data
+    output_data = {
+        "config": config,
+        "data": data
+    }
+    
+    # Save to JSON file
+    with open(output_path, 'w') as f:
+        json.dump(output_data, f, indent=2)
+    
+    print(f"Saved progressive data with {len(data)} timesteps to: {output_path}")
+    return output_data
+
+
+def create_video_from_frames(frame_paths, output_video_path, fps=5):
+    """
+    将图像帧序列合成为MP4视频
+    
+    Args:
+        frame_paths: list of str, 按时间顺序排列的图像文件路径列表
+        output_video_path: str, 输出视频文件路径
+        fps: int, 视频帧率（每秒帧数）
+    """
+    try:
+        import cv2
+        use_opencv = True
+    except ImportError:
+        try:
+            import imageio
+            use_opencv = False
+        except ImportError:
+            print("Warning: Neither opencv-python nor imageio is installed. Cannot create video.")
+            return False
+    
+    if not frame_paths:
+        print("Warning: No frames to create video.")
+        return False
+    
+    if use_opencv:
+        # 使用OpenCV创建视频
+        # 读取第一帧以获取尺寸
+        first_frame = cv2.imread(frame_paths[0])
+        if first_frame is None:
+            print(f"Error: Cannot read frame {frame_paths[0]}")
+            return False
+        
+        height, width, layers = first_frame.shape
+        
+        # 创建视频写入器
+        fourcc = cv2.VideoWriter_fourcc(*'mp4v')
+        video = cv2.VideoWriter(output_video_path, fourcc, fps, (width, height))
+        
+        for frame_path in frame_paths:
+            frame = cv2.imread(frame_path)
+            if frame is not None:
+                video.write(frame)
+            else:
+                print(f"Warning: Cannot read frame {frame_path}")
+        
+        video.release()
+        print(f"Video saved to: {output_video_path}")
+        return True
+    else:
+        # 使用imageio创建视频
+        frames = []
+        for frame_path in frame_paths:
+            try:
+                frames.append(imageio.imread(frame_path))
+            except Exception as e:
+                print(f"Warning: Cannot read frame {frame_path}: {e}")
+        
+        if frames:
+            imageio.mimsave(output_video_path, frames, fps=fps)
+            print(f"Video saved to: {output_video_path}")
+            return True
+        else:
+            print("Error: No valid frames to create video.")
+            return False

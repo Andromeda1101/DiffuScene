@@ -2,7 +2,7 @@
 # Please update the path to your own environment in config.yaml and following arguments befrore running the script
 cd ./scripts
 
-exp_dir="your experiment directory"
+exp_dir="../outputs/my_training"
 
 #### bedrooms
 config="../config/uncond/diffusion_bedrooms_instancond_lat32_v.yaml"
